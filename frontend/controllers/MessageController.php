@@ -91,6 +91,7 @@ class MessageController extends Controller
         $endPage = ceil($count / $pageSize);
 
         $result = $this->getMessageList(0, $pageNum, $pageSize);
+        //var_dump($result);die;
         //上一页
         $pageStart = $pageNum == 1 ? 1 : $pageNum - 1;
         //下一页
@@ -158,7 +159,7 @@ class MessageController extends Controller
     {
 
         //首先判断是否登录
-        if ($_SESSION['__id']) {
+        if (!empty($_SESSION['__id'])) {
             $model = new Message();
             $user_id = $_SESSION['__id'];
             $title = isset($_POST['title']) ? trim($_POST['title']) : "";
@@ -203,8 +204,7 @@ class MessageController extends Controller
 
 
         } else {
-
-            $arr = array('code' => 2, 'msg' => '请登录以后在留言！');
+            $arr = array('code' => 2, 'message' => '请登录以后在留言！');
             exit(json_encode($arr));
         }
     }
@@ -213,7 +213,7 @@ class MessageController extends Controller
     {
 
         //$message_list = Message::find()->innerJoinWith('user')->where(['pid'=>$pid])->orderBy(['msg_id'=>SORT_DESC])->limit(($pageNum - 1) * $pageSize,$pageSize)->asArray()->all();
-        $sql = "SELECT * FROM message AS m INNER JOIN user AS u ON m.user_id=u.id WHERE m.pid='$pid' ORDER BY like_num DESC,msg_id DESC LIMIT " . (($pageNum - 1) * $pageSize) . "," . $pageSize;
+        $sql = "SELECT m.msg_id,m.user_id,m.pid,m.like_num,m.title,m.content,m.created_at,u.username,u.id  FROM message AS m INNER JOIN user AS u ON m.user_id=u.id WHERE m.pid='$pid' GROUP BY content ORDER BY like_num DESC,msg_id DESC LIMIT " . (($pageNum - 1) * $pageSize) . "," . $pageSize;
         $message_list = Message::findBySql($sql)->asArray()->all();
 
         $result = [];
@@ -239,84 +239,92 @@ class MessageController extends Controller
     public function getCount()
     {
 
-        return Message::find()->where(['pid' => 0])->count();
+        return Message::find()->where(['pid' => 0])->groupBy(['content'])->count();
     }
 
     //redis点赞
     public function actionRedis()
     {
 
-        Yii::$app->response->format = \yii\web\Response::FORMAT_JSON;
-        $redis = Yii::$app->redis;
-        $msg_id = !empty($_POST['msg_id']) ? intval($_POST['msg_id']) : 0;
-        $cookie_user_id = $_SESSION['__id'];
-        $bool = $redis->exists($msg_id . 'log');
+        if (!empty($_SESSION['__id'])){
 
-        $data = json_encode(['user_id' => $cookie_user_id, 'msg_id' => $msg_id, 'created' => time()], true);
+            Yii::$app->response->format = \yii\web\Response::FORMAT_JSON;
+            $redis = Yii::$app->redis;
+            $msg_id = !empty($_POST['msg_id']) ? intval($_POST['msg_id']) : 0;
+            $cookie_user_id = $_SESSION['__id'];
+            $bool = $redis->exists($msg_id . 'log');
 
-        if (!$bool) {
+            $data = json_encode(['user_id' => $cookie_user_id, 'msg_id' => $msg_id, 'created' => time()], true);
 
-            $redis->lpush($msg_id . 'log', $data);
+            if (!$bool) {
 
-            //插入成功
-            if (!$redis->exists($msg_id . 'like_num')) {
-                //执行sql查询content likes
-                $likes = $this->redis_likes($msg_id);
-                //进行点赞了,likes+1
-                $redis->set($msg_id . 'like_num', $likes + 1);
-            } else {
-                $redis->incr($msg_id . 'like_num');
-            }
-            $likes = $redis->get($msg_id . 'like_num');
+                $redis->lpush($msg_id . 'log', $data);
 
-            $data = $redis->rpop($msg_id . 'log');
-
-            $arr[] = json_decode($data, JSON_UNESCAPED_UNICODE);
-
-            $redis->lpush($msg_id . 'log', $data);
-            $transaction = Yii::$app->db->beginTransaction(\yii\db\Transaction::SERIALIZABLE);
-            try {
-
-                $sql = "select like_num from message where msg_id=:msg_id for update";
-                $info = Yii::$app->db->createCommand($sql)->bindValue(':msg_id', $msg_id)->queryOne();
-                //现在点赞的人数 +1 因 进行一次请求
-                $likes = $info['like_num'] + 1;
-                /*点赞量入库*/
-                $sql = "update message set like_num=like_num+1 WHERE msg_id=:msg_id";
-
-                Yii::$app->db->createCommand($sql)->bindValue(':msg_id', $msg_id)->execute();
-                //此时数据库 与缓存是一致的
-                $redis->set($msg_id . 'like_num', $likes);
-
-                /*log入库*/
-                $bool = Yii::$app->db->createCommand()->batchInsert(LikeIp::tableName(), ['user_id', 'msg_id', 'created_at'], $arr)->execute();
-                //var_dump($bool);die;
-                if ($bool == 0) {
-                    throw new Exception('点赞日志入库失败');
+                //插入成功
+                if (!$redis->exists($msg_id . 'like_num')) {
+                    //执行sql查询content likes
+                    $likes = $this->redis_likes($msg_id);
+                    //进行点赞了,likes+1
+                    $redis->set($msg_id . 'like_num', $likes + 1);
+                } else {
+                    $redis->incr($msg_id . 'like_num');
                 }
-                $transaction->commit();
+                $likes = $redis->get($msg_id . 'like_num');
+
+                $data = $redis->rpop($msg_id . 'log');
+
+                $arr[] = json_decode($data, JSON_UNESCAPED_UNICODE);
+
+                $redis->lpush($msg_id . 'log', $data);
+                $transaction = Yii::$app->db->beginTransaction(\yii\db\Transaction::SERIALIZABLE);
+                try {
+
+                    $sql = "select like_num from message where msg_id=:msg_id for update";
+                    $info = Yii::$app->db->createCommand($sql)->bindValue(':msg_id', $msg_id)->queryOne();
+                    //现在点赞的人数 +1 因 进行一次请求
+                    $likes = $info['like_num'] + 1;
+                    /*点赞量入库*/
+                    $sql = "update message set like_num=like_num+1 WHERE msg_id=:msg_id";
+
+                    Yii::$app->db->createCommand($sql)->bindValue(':msg_id', $msg_id)->execute();
+                    //此时数据库 与缓存是一致的
+                    $redis->set($msg_id . 'like_num', $likes);
+
+                    /*log入库*/
+                    $bool = Yii::$app->db->createCommand()->batchInsert(LikeIp::tableName(), ['user_id', 'msg_id', 'created_at'], $arr)->execute();
+                    //var_dump($bool);die;
+                    if ($bool == 0) {
+                        throw new Exception('点赞日志入库失败');
+                    }
+                    $transaction->commit();
 
 
-                $array = array('code' => 1, 'error' => '点赞成功');
+                    $array = array('code' => 1, 'error' => '点赞成功');
+                    exit(json_encode($array));
+
+                } catch (\PDOException $exception) {
+
+                    $transaction->rollBack();
+                    return '点赞失败' . $exception->getMessage();
+                }
+
+            } else {
+
+                $likes = $redis->get($msg_id . 'like_num');
+
+                if (empty($likes)) {
+                    $likes = $this->redis_likes($msg_id);
+                }
+
+                $array = array('code' => 0, 'success' => '你已经点过赞了');
                 exit(json_encode($array));
-
-            } catch (\PDOException $exception) {
-
-                $transaction->rollBack();
-                return '点赞失败' . $exception->getMessage();
             }
 
-        } else {
-
-            $likes = $redis->get($msg_id . 'like_num');
-
-            if (empty($likes)) {
-                $likes = $this->redis_likes($msg_id);
-            }
-
-            $array = array('code' => 0, 'success' => '你已经点过赞了');
-            exit(json_encode($array));
+        }else{
+            $arr = array('code' => 2, 'message' => '请登录以后再点赞！');
+            exit(json_encode($arr));
         }
+
 
 
     }

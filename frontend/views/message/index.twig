@@ -118,7 +118,7 @@
 　<ul class="pagination" style="margin-left: 466px;margin-top: 35px;">
     <li><a href="/index.php?r=message/index&pageNum=1">首页</a></li>
     <li><a href="/index.php?r=message/index&pageNum={{ pageStart }}">上一页</a></li>
-    <li><a href="/index.php?r=message/index&pageNum={{ pageEnd }}">下一页</a></li>
+    <li><a href="/index.php?r=message/index&pageNum={{ pageEnd }}" class="last" onclick="last()">下一页</a></li>
     <li><a href="/index.php?r=message/index&pageNum={{ endPage }}">尾页</a></li>
 </ul>
 
@@ -130,7 +130,11 @@
 
     <script>
 
-        var textFlag = 'true';
+
+
+
+
+    /*    var textFlag = 'true';
         $("#pl_input").on('input propertychange',function(){
             var text = $(this).val().length
             if(text < 35 && text != 0){
@@ -138,23 +142,21 @@
             }else{
                 textFlag = 'false';
             }
-        })
+        })*/
         var user_id = 0;
         var msg_id = 0;
         var zan_id = '';
         var get_zan_id = '';
-        var message = $('#content').val();
-        var title = $('#title').val();
+        var message = "";
+        var title = "";
+        var url = $('.last').attr('href').split('pageNum=')[1];
         get_zan_id = window.localStorage.getItem('zan_id')
-        //删除
-        $('.ajaxLink').click(function () {
-            msg_id = $(this).data('id');
-            user_id = $(this).data('user');
-            del();
-        });
+
         //留言
         $('#subBtn').click(function(){
-                liuyan();
+             message = $('#content').val();
+             title = $('#title').val();
+            liuyan();
         });
         //点赞
         $('#liu_text').delegate('.zan','click',function(){
@@ -189,6 +191,11 @@
                          console.log(res.msg)
                         zan_id = a
                         $('#up_end').show();
+                    }else if(res.code==2){
+                        HYLayer.showTips(res.message,1,3000,function () {
+                            window.location.reload();
+                        })
+                        return false;
                     }
 
                 }
@@ -204,8 +211,6 @@
 
         //留言
         function liuyan() {
-
-
 
             if (message == "" || message == null && title == ""||title==null) {
 
@@ -234,7 +239,7 @@
                                 })
                                 return false;
                             }else if(res.code==2){
-                                HYLayer.showTips(res.msg,1,3000,function () {
+                                HYLayer.showTips(res.message,1,3000,function () {
                                     window.location.reload();
                                 })
                                 return false;
@@ -256,21 +261,17 @@
 
         }
 
-/*
-        var input=document.getElementById('search');
-        input.onfocus=function(){
-            if(this.value=="请输入留言标题")
-                this.value="";
-            this.style.color="black";
-        }
-        input.onblur=function(){
-            if(this.value==""){
-                this.value="请输入留言标题";
-                this.style.color="#999"
+        function last() {
+
+            if(url>{{ endPage }}){
+                $('.last').attr('href','javascript:;')
+                HYLayer.showTips('已经是最后一页了',2,3000,function () {
+
+                })
+                return false;
+
             }
         }
-*/
-
 
 
     </script>
