@@ -72,7 +72,6 @@ class MessageController extends Controller
             ],
         ];
     }
-
     /**
      * Displays homepage.
      *
