@@ -1,0 +1,278 @@
+
+
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+          content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <link rel="stylesheet" href="/css/style.css?t=<?php echo time();?>">
+    <title>留言板</title>
+
+</head>
+<body>
+
+
+<div class="bodywrap">
+    <div class="headernav">
+        <img src="/frontend/web/img/banner.jpg" alt="">
+        <div>
+            <h2>留言版</h2>
+            <p></p>
+        </div>
+    </div>
+
+   {# <div style="margin-top: 15px;">
+        <input type="text" id="search" name="search" value="请输入留言标题" style="width: 912px;" >
+        <button class="search">搜索</button>
+    </div>#}
+
+    <div class="msgwrap">
+        <div class="listwrap" id="liu_text">
+            {% for datas in data %}
+
+            <div class="msglist">
+                <h3>{{ datas.title }}&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{{ datas.username }}<em><div class="zan" data-id="{{ datas.user_id }}" data-msg="{{ datas.msg_id }}"  id="{{ datas.msg_id }}">
+
+                                        <img src="/img/dian.jpg" class="zan_img" style="width: 20px;height: 20px;" >
+                                        <span class="zan_num">(<span class="num">{{ datas.like_num }}</span>)</span>
+
+                                </div>
+                        </em>
+
+
+                </h3>
+                <p>{{ datas.content}}</p>
+
+                {% if datas.child != null %}
+
+                    {% for child in datas.child %}
+
+                        <p class="replyc"><span>{{ child.username }}&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{{ child.created_at | date("Y-m-d H:i:s")}}</span>{{ child.content }}<span style="float: right;"><a style="background: #00a8ee;" href="javascript:;" class="zireply" data-title="回复评论" data-url="/index.php?r=reply/index&user_id={{child.user_id}}&msg_id={{child.msg_id}}">回复</a></span></p>
+
+                        {% if child.child != null %}
+
+                            {% for childs in child.child %}
+
+                            <p class="replyc" style="margin-left:20px;"><span>{{ childs.username }}&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{{ childs.created_at | date("Y-m-d H:i:s")}}</span>{{ childs.content }}<span style="float: right;"><a style="background: #00a8ee;" href="javascript:;" class="zireply" data-title="回复评论" data-url="/index.php?r=reply/index&user_id={{childs.user_id}}&msg_id={{childs.msg_id}}">回复</a></span></p>
+
+                                {% if childs.child != null %}
+
+                                    {% for childss in childs.child %}
+
+                                        <p class="replyc" style="margin-left:40px;"><span>{{ childss.username }}&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{{ childss.created_at | date("Y-m-d H:i:s")}}</span>{{ childss.content }}<span style="float: right;"><a style="background: #00a8ee;" href="javascript:;" class="zireply" data-title="回复评论" data-url="/index.php?r=reply/index&user_id={{childss.user_id}}&msg_id={{childss.msg_id}}">回复</a></span></p>
+
+                                        {% if childss.child != null %}
+
+                                            {% for childsss in childss.child %}
+
+                                                <p class="replyc" style="margin-left:60px;"><span>{{ childsss.username }}&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{{ childsss.created_at | date("Y-m-d H:i:s")}}</span>{{ childsss.content }}<span style="float: right;"><a style="background: #00a8ee;" href="javascript:;" class="zireply" data-title="回复评论" data-url="/index.php?r=reply/index&user_id={{childsss.user_id}}&msg_id={{childsss.msg_id}}">回复</a></span></p>
+
+                                                {% if childsss.child != null %}
+
+                                                    {% for childssss in childsss.child %}
+
+                                                        <p class="replyc" style="margin-left:80px;"><span>{{ childssss.username }}&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{{ childssss.created_at | date("Y-m-d H:i:s")}}</span>{{ childssss.content }}<span style="float: right;"><a style="background: #00a8ee;" href="javascript:;" class="zireply" data-title="回复评论" data-url="/index.php?r=reply/index&user_id={{childssss.user_id}}&msg_id={{childssss.msg_id}}">回复</a></span></p>
+
+                                                    {% endfor %}
+
+
+                                                {% endif %}
+                                            {% endfor %}
+
+                                        {% endif %}
+
+                                    {% endfor %}
+
+                                {% endif %}
+
+                            {% endfor %}
+
+                        {% endif %}
+
+                    {% endfor %}
+
+                {% endif %}
+
+                <p>
+                    <a href="javascript:;" class="reply" data-title="回复留言" data-url="/index.php?r=reply/index&user_id={{datas.user_id}}&msg_id={{datas.msg_id}}" >回复</a>
+                    {#<a href="javascript:;" data-msg="确定删除该留言吗？" data-user="{{ datas.user_id }}" data-id="{{datas.msg_id}}" class="ajaxLink del">删除</a>#}
+                </p>
+            </div>
+            {% endfor %}
+
+
+        </div>
+        <div class="msgform">
+            <div class="ajaxSubmit">
+                <p><input type="text" name="title" id="title" placeholder="留言主题"/></p>
+                <input name="_csrf-frontend" type="hidden" id="_csrf-frontend" value="<?= Yii::$app->request->csrfToken ?>">
+                <p><textarea name="content" id="content" cols="30" rows="10" placeholder="留言内容"></textarea></p>
+                <p><button id="subBtn">提交</button></p>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+　<ul class="pagination" style="margin-left: 466px;margin-top: 35px;">
+    <li><a href="/index.php?r=message/index&pageNum=1">首页</a></li>
+    <li><a href="/index.php?r=message/index&pageNum={{ pageStart }}">上一页</a></li>
+    <li><a href="/index.php?r=message/index&pageNum={{ pageEnd }}">下一页</a></li>
+    <li><a href="/index.php?r=message/index&pageNum={{ endPage }}">尾页</a></li>
+</ul>
+
+
+
+    <script type="text/javascript" src="/js/jquery.min.js"></script>
+    <script type="text/javascript" src="/js/jquery.form.min.js"></script>
+    <script type="text/javascript" src="/js/common.js?t=<?php echo time();?>"></script>
+
+    <script>
+
+        var textFlag = 'true';
+        $("#pl_input").on('input propertychange',function(){
+            var text = $(this).val().length
+            if(text < 35 && text != 0){
+                textFlag = 'true';
+            }else{
+                textFlag = 'false';
+            }
+        })
+        var user_id = 0;
+        var msg_id = 0;
+        var zan_id = '';
+        var get_zan_id = '';
+        var message = $('#content').val();
+        var title = $('#title').val();
+        get_zan_id = window.localStorage.getItem('zan_id')
+        //删除
+        $('.ajaxLink').click(function () {
+            msg_id = $(this).data('id');
+            user_id = $(this).data('user');
+            del();
+        });
+        //留言
+        $('#subBtn').click(function(){
+                liuyan();
+        });
+        //点赞
+        $('#liu_text').delegate('.zan','click',function(){
+            dianji($(this).attr('id'))
+        })
+        function dianji(a){
+            //点赞
+            var user_id=$('#'+a).data('id');
+            var msg_id=$('#'+a).data('msg');
+
+
+       $.ajax({
+                type: 'POST',
+                url: '/index.php?r=message/redis',
+                data: {user_id: user_id,msg_id:msg_id},
+                dataType: 'json',
+                success: function (res) {
+                    console.log(res);
+                    if(res.code == 0){
+                        HYLayer.showTips(res.success,1,3000,function () {
+                            window.location.reload();
+                        })
+                        return false;
+                    }else if(res.code==1){
+                        HYLayer.showTips(res.error,1,3000,function () {
+                            window.location.reload();
+                        })
+                        var num = parseInt($('#'+a).find('.num').text())+1
+                        $('#'+a).find('.num').text(num)
+                        return false;
+                    }else if(res.code==3){
+                         console.log(res.msg)
+                        zan_id = a
+                        $('#up_end').show();
+                    }
+
+                }
+            });
+        }
+
+
+        if(get_zan_id != null && get_zan_id != ''){
+            dianji(get_zan_id)
+            window.localStorage.removeItem('zan_id')
+        }
+
+
+        //留言
+        function liuyan() {
+
+
+
+            if (message == "" || message == null && title == ""||title==null) {
+
+                HYLayer.showTips('标题和留言不能为空',1,3000,function () {
+                    window.location.reload();
+
+                });
+                return false;
+            }else{
+
+                    $.ajax({
+                        type: 'POST',
+                        url: '/index.php?r=message/add',
+                        data: {message: message,title:title},
+                        dataType: 'json',
+                        success: function (res) {
+                            console.log(res)
+                            if(res.code == 0){
+                               HYLayer.showTips(res.success,1,3000,function () {
+                                    window.location.reload();
+                               })
+                                return false;
+                            }else if(res.code==1){
+                                HYLayer.showTips(res.error,1,3000,function () {
+                                    window.location.reload();
+                                })
+                                return false;
+                            }else if(res.code==2){
+                                HYLayer.showTips(res.msg,1,3000,function () {
+                                    window.location.reload();
+                                })
+                                return false;
+                            }else if (res.code==3){
+
+                                HYLayer.showTips(res.msg,1,3000,function () {
+                                    window.location.reload();
+                                })
+                                return false;
+                            }
+                        },
+                        error:function (err) {
+                            console.log(err)
+                        }
+                    });
+
+
+            }
+
+        }
+
+/*
+        var input=document.getElementById('search');
+        input.onfocus=function(){
+            if(this.value=="请输入留言标题")
+                this.value="";
+            this.style.color="black";
+        }
+        input.onblur=function(){
+            if(this.value==""){
+                this.value="请输入留言标题";
+                this.style.color="#999"
+            }
+        }
+*/
+
+
+
+    </script>
+</body>
+</html>
