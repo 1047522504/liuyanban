@@ -11,6 +11,7 @@ use common\models\User;
 use Yii;
 use yii\data\Pagination;
 use yii\db\Exception;
+use yii\helpers\Html;
 use yii\helpers\VarDumper;
 use yii\web\Controller;
 use yii\filters\VerbFilter;
@@ -80,18 +81,16 @@ class MessageController extends Controller
     public function actionIndex()
     {
 
+        $pageNum = Yii::$app->request->get('pageNum');
+
+        $pageNum = empty($pageNum)? 1 : $pageNum;
         //总记录条数
         $count = $this->getCount();
-
         //每页显示条数
         $pageSize = 5;
-
-        $pageNum = empty($_GET["pageNum"]) ? 1 : $_GET["pageNum"];
         //总页数
         $endPage = ceil($count / $pageSize);
-
         $result = $this->getMessageList(0, $pageNum, $pageSize);
-        //var_dump($result);die;
         //上一页
         $pageStart = $pageNum == 1 ? 1 : $pageNum - 1;
         //下一页
@@ -110,72 +109,23 @@ class MessageController extends Controller
 
     }
 
-/*    //点赞
-    public function actionLike()
-    {
-
-        if ($_SESSION['__id']) {
-
-            $cookie_user_id = $_SESSION['__id'];
-            $user_id = !empty($_POST['user_id']) ? intval($_POST['user_id']) : 0;
-
-            $msg_id = !empty($_POST['msg_id']) ? intval($_POST['msg_id']) : 0;
-            //判断是否点过赞
-
-            $query = LikeIp::find();
-            $data = $query->where(['msg_id' => $msg_id, 'user_id' => $cookie_user_id])->all();
-
-
-            if (!empty($data)) {
-                $arr = array('code' => 0, 'success' => '你已经点过赞了');
-                exit(json_encode($arr));
-            } else {
-
-                $like_ip = new LikeIp();
-                $like_ip->user_id = $cookie_user_id;
-                $like_ip->msg_id = $msg_id;
-                $like_ip->created_at = time();
-                $like_ip->save();
-
-                $message = Message::find()->where(['msg_id' => $msg_id])->one();
-                $message->like_num += 1;
-                $message->created_at = time();
-                $message->save();
-
-
-                $arr = array('code' => 1, 'error' => '点赞成功');
-                exit(json_encode($arr));
-
-            }
-        } else {
-            $arr = array('code' => 3, 'msg' => '请登录以后在点赞！');
-            exit(json_encode($arr));
-        }
-
-    }*/
-
     //留言操作
     public function actionAdd()
     {
-
+        $session_id = Yii::$app->session->get('__id');
         //首先判断是否登录
-        if (!empty($_SESSION['__id'])) {
+        if (!empty($session_id)) {
             $model = new Message();
-            $user_id = $_SESSION['__id'];
-            $title = isset($_POST['title']) ? trim($_POST['title']) : "";
-            $message = isset($_POST['message']) ? trim($_POST['message']) : "";
-            $message = str_replace("_", "\_", $message);
-            $message = str_replace("%", "\%", $message);
-            $message = strip_tags($message);
-            $message = htmlspecialchars($message);
+            $title = Yii::$app->request->post('title');
+            $message = Yii::$app->request->post('message');
+            $title = isset($title) ? trim($title) : "";
+            $message = isset($message) ? trim($message) : "";
+
+            $message = Html::encode($message);
             $message = addslashes($message);
             $message = $model->getWords($message);
 
-
-            $title = str_replace("_", "\_", $title);
-            $title = str_replace("%", "\%", $title);
-            $title = strip_tags($title);
-            $title = htmlspecialchars($title);
+            $title = Html::encode($title);
             $title = addslashes($title);
             $title = $model->getWords($title);
 
@@ -183,7 +133,7 @@ class MessageController extends Controller
 
                 $model->title = $title;
                 $model->content = $message;
-                $model->user_id = $user_id;
+                $model->user_id = $session_id;
                 $model->created_at = time();
                 $model->like_num = 0;
                 $res = $model->save();
@@ -212,12 +162,34 @@ class MessageController extends Controller
     public function getMessageList($pid = 0, $pageNum = 1, $pageSize = 3)
     {
 
-        //$message_list = Message::find()->innerJoinWith('user')->where(['pid'=>$pid])->orderBy(['msg_id'=>SORT_DESC])->limit(($pageNum - 1) * $pageSize,$pageSize)->asArray()->all();
-        $sql = "SELECT m.msg_id,m.user_id,m.pid,m.like_num,m.title,m.content,m.created_at,u.username,u.id  FROM message AS m INNER JOIN user AS u ON m.user_id=u.id WHERE m.pid='$pid' GROUP BY content ORDER BY like_num DESC,msg_id DESC LIMIT " . (($pageNum - 1) * $pageSize) . "," . $pageSize;
-        $message_list = Message::findBySql($sql)->asArray()->all();
+
+        $sql = "SELECT * FROM message WHERE pid='$pid' GROUP BY content ORDER BY like_num DESC,msg_id DESC LIMIT " . (($pageNum - 1) * $pageSize) . "," . $pageSize;
+
+        $message = Yii::$app->db->createCommand($sql)->queryAll();
+
+
+        $userId = array();
+        $da = array();
+
+        foreach ($message as &$v){
+
+            $userId[] = $v['user_id'];
+        }
+
+        $user = User::find()->select(['id','username'])->where(['in','id',$userId])->asArray()->all();
+
+        foreach ($user as &$v) {
+            $da['username'] = $v;
+
+        }
+
+        foreach ($message as &$v) {
+            $v['username'] = $da['username']['username'];
+        }
+
 
         $result = [];
-        foreach ($message_list as $key => $value) {
+        foreach ($message as $key => $value) {
 
             $data = [];
             $data['msg_id'] = $value['msg_id'];
@@ -235,6 +207,9 @@ class MessageController extends Controller
         return $result;
     }
 
+
+
+
     //获取总条数
     public function getCount()
     {
@@ -246,15 +221,17 @@ class MessageController extends Controller
     public function actionRedis()
     {
 
-        if (!empty($_SESSION['__id'])){
+        $session_id = Yii::$app->session->get('__id');
+
+        if (!empty($session_id)){
 
             Yii::$app->response->format = \yii\web\Response::FORMAT_JSON;
             $redis = Yii::$app->redis;
-            $msg_id = !empty($_POST['msg_id']) ? intval($_POST['msg_id']) : 0;
-            $cookie_user_id = $_SESSION['__id'];
+            $msg_id = Yii::$app->request->post('msg_id');
+            $msg_id = !empty($msg_id) ? intval($msg_id) : 0;
             $bool = $redis->exists($msg_id . 'log');
 
-            $data = json_encode(['user_id' => $cookie_user_id, 'msg_id' => $msg_id, 'created' => time()], true);
+            $data = json_encode(['user_id' => $session_id, 'msg_id' => $msg_id, 'created' => time()], true);
 
             if (!$bool) {
 
@@ -279,12 +256,12 @@ class MessageController extends Controller
                 $transaction = Yii::$app->db->beginTransaction(\yii\db\Transaction::SERIALIZABLE);
                 try {
 
-                    $sql = "select like_num from message where msg_id=:msg_id for update";
+                    $sql = "SELECT like_num FROM message WHERE msg_id=:msg_id FOR UPDATE";
                     $info = Yii::$app->db->createCommand($sql)->bindValue(':msg_id', $msg_id)->queryOne();
                     //现在点赞的人数 +1 因 进行一次请求
                     $likes = $info['like_num'] + 1;
                     /*点赞量入库*/
-                    $sql = "update message set like_num=like_num+1 WHERE msg_id=:msg_id";
+                    $sql = "UPDATE message SET like_num=like_num+1 WHERE msg_id=:msg_id";
 
                     Yii::$app->db->createCommand($sql)->bindValue(':msg_id', $msg_id)->execute();
                     //此时数据库 与缓存是一致的

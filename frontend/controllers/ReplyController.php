@@ -8,7 +8,9 @@ use common\models\Message;
 use common\models\Reply;
 use common\models\User;
 use Yii;
+use yii\console\controllers\HelpController;
 use yii\db\Exception;
+use yii\helpers\Html;
 use yii\helpers\VarDumper;
 use yii\web\Controller;
 use yii\filters\VerbFilter;
@@ -78,8 +80,9 @@ class ReplyController extends Controller
     //回复留言界面
     public function actionIndex()
     {
-        $user_id = $_GET['user_id'];
-        $msg_id = $_GET['msg_id'];
+
+        $user_id = Yii::$app->request->get('user_id');
+        $msg_id = Yii::$app->request->get('msg_id');
 
         return $this->render('reply.twig', [
             'user_id' => $user_id,
@@ -94,30 +97,28 @@ class ReplyController extends Controller
     public function actionAdd()
     {
 
+        $session_id = Yii::$app->session->get('__id');
 
-        if($_SESSION['__id']){
+        if($session_id){
 
             $reply = new Message();
-            $user_id = $_SESSION['__id'];
-            //$username=User::findBySql("SELECT username  FROM user where id='$user_id'")->one();
-            $msg_id = !empty($_POST['msg_id']) ? intval($_POST['msg_id']) : 0;
-            $content = isset($_POST['content']) ? trim($_POST['content']) : "";
-            $content = str_replace("_", "\_", $content);
-            $content = str_replace("%", "\%", $content);
-            $content = strip_tags($content);
-            $content = htmlspecialchars($content);
+            $msg_id = Yii::$app->request->post('msg_id');
+            $content = Yii::$app->request->post('content');
+            $msg_id = !empty($msg_id) ? intval($msg_id) : 0;
+            $content = isset($content) ? trim($content) : "";
+            $content = Html::encode($content);
             $content = addslashes($content);
+
             $content = $reply->getWords($content);
 
             if(strpos($content,'****') == false){
 
-                $reply->user_id = $user_id;
+                $reply->user_id = $session_id;
                 $reply->pid = $msg_id;
                 $reply->title = "留言";
                 $reply->content = $content;
                 $reply->created_at = time();
                 $res = $reply->save();
-
 
                 if ($res) {
                     $arr = array('code' => 0, 'success' => '回复成功');

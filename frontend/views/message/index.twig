@@ -22,11 +22,6 @@
         </div>
     </div>
 
-   {# <div style="margin-top: 15px;">
-        <input type="text" id="search" name="search" value="请输入留言标题" style="width: 912px;" >
-        <button class="search">搜索</button>
-    </div>#}
-
     <div class="msgwrap">
         <div class="listwrap" id="liu_text">
             {% for datas in data %}
@@ -96,7 +91,6 @@
 
                 <p>
                     <a href="javascript:;" class="reply" data-title="回复留言" data-url="/index.php?r=reply/index&user_id={{datas.user_id}}&msg_id={{datas.msg_id}}" >回复</a>
-                    {#<a href="javascript:;" data-msg="确定删除该留言吗？" data-user="{{ datas.user_id }}" data-id="{{datas.msg_id}}" class="ajaxLink del">删除</a>#}
                 </p>
             </div>
             {% endfor %}
@@ -115,6 +109,9 @@
     </div>
 </div>
 
+
+
+
 　<ul class="pagination" style="margin-left: 466px;margin-top: 35px;">
     <li><a href="/index.php?r=message/index&pageNum=1">首页</a></li>
     <li><a href="/index.php?r=message/index&pageNum={{ pageStart }}">上一页</a></li>
@@ -131,18 +128,6 @@
     <script>
 
 
-
-
-
-    /*    var textFlag = 'true';
-        $("#pl_input").on('input propertychange',function(){
-            var text = $(this).val().length
-            if(text < 35 && text != 0){
-                textFlag = 'true';
-            }else{
-                textFlag = 'false';
-            }
-        })*/
         var user_id = 0;
         var msg_id = 0;
         var zan_id = '';
